@@ -244,8 +244,8 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
 }
 </style>
   <!-- ═══ SECURITY ═══ -->
-  <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none';">  <meta http-equiv="X-Content-Type-Options" content="nosniff"> -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self' https://script.google.com; img-src 'self' data:; frame-ancestors 'none';">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="X-Frame-Options" content="DENY">
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
@@ -288,10 +288,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
     <strong>Updating your preferences?</strong> Enter your registered e-mail below. All fields reflect your current settings — change what you need and resubmit. Your previous selections will be replaced.
   </div>
 
-  <form id="reg-form" novalidate>
-  <!--<form id="reg-form" name="subscriber-profile" method="POST" data-netlify="true"> -->
   <form id="reg-form" name="subscriber-profile" method="POST" novalidate>
-  <input type="hidden" name="form-name" value="subscriber-profile" />
 
     <!-- ══ 1. PERSONAL ══ -->
     <div class="section-label">
@@ -302,19 +299,16 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
     <div class="form-grid">
       <div class="field full">
         <label>Full Name <span class="req">*</span></label>
-        <!--<input type="text" id="name" placeholder="e.g. Maria Oliveira" required>-->
-		<input type="text" id="name" name="name" placeholder="e.g. John Smith" required>
+        <input type="text" id="name" name="name" placeholder="e.g. John Smith" required>
       </div>
       <div class="field full">
         <label>E-mail Address <span class="req">*</span></label>
-        <!--<input type="email" id="email" placeholder="your@email.com" required> -->
-		<input type="email" id="email" name="email" placeholder="your@email.com" required>
+        <input type="email" id="email" name="email" placeholder="your@email.com" required>
         <span class="hint">Use the same e-mail you used on the payment page. This is your account identifier.</span>
       </div>
       <div class="field">
         <label>Country <span class="req">*</span></label>
-        <!--<select id="country" required>-->
-		<select id="country" name="country" required>
+        <select id="country" name="country" required>
           <option value="">Select country…</option>
           <option>Argentina</option><option>Australia</option><option>Austria</option>
           <option>Bangladesh</option><option>Belgium</option><option>Bolivia</option>
@@ -339,13 +333,11 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
       </div>
       <div class="field">
         <label>Date of Birth</label>
-        <input type="date" id="dob">
-		<!--<input type="date" id="dob" name="dob">-->
+        <input type="date" id="dob" name="dob">
       </div>
       <div class="field">
         <label>Education Level <span class="req">*</span></label>
-        <select id="education" required>
-		<!--<select id="education" name="education" required>-->
+        <select id="education" name="education" required>
           <option value="">Select level…</option>
           <option>High School</option>
           <option>Undergraduate (in progress)</option>
@@ -361,13 +353,11 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
       </div>
       <div class="field">
         <label>Occupation / Role</label>
-        <!--<input type="text" id="occupation" placeholder="e.g. Professor, PhD Student…">-->
-		<input type="text" id="occupation" name="occupation" placeholder="e.g. Professor, PhD Student…">
+        <input type="text" id="occupation" name="occupation" placeholder="e.g. Professor, PhD Student…">
       </div>
       <div class="field full">
         <label>Institution / Affiliation</label>
-        <!--<input type="text" id="institution" placeholder="University, company, or independent">-->
-		<input type="text" id="institution" name="institution" placeholder="University, company, or independent">
+        <input type="text" id="institution" name="institution" placeholder="University, company, or independent">
       </div>
     </div>
 
@@ -382,8 +372,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
     <div class="form-grid" style="margin-bottom:8px;">
       <div class="field full">
         <label>Domain <span class="req">*</span></label>
-        <!--<select id="domain" required onchange="onDomainChange()">-->
-		<select id="domain" name="domain" required onchange="onDomainChange()">
+        <select id="domain" name="domain" required onchange="onDomainChange()">
           <option value="">Select domain…</option>
         </select>
         <span class="hint">The broad scientific area you work in.</span>
@@ -413,8 +402,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
       <!-- Delivery scope -->
       <div class="field full">
         <label>Delivery Scope <span class="req">*</span></label>
-        <!--<select id="granularity" required onchange="onGranularityChange()">-->
-		<select id="granularity" name="granularity" required onchange="onGranularityChange()">
+        <select id="granularity" name="granularity" required onchange="onGranularityChange()">
           <option value="">Choose breadth of articles sent…</option>
           <option value="topic">Topic only — most specific</option>
           <option value="subfield">Subfield — narrow & focused</option>
@@ -1291,7 +1279,6 @@ function sanitizeTags(arr, maxItems, maxLen) {
     .filter(t => t.length > 0);
 }
 
-//document.getElementById('reg-form').addEventListener('submit', function(e) {
 document.getElementById('reg-form').addEventListener('submit', async function(e) {
   e.preventDefault();
 
