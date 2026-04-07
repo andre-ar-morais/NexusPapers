@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus Papers — Choose Your Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Nunito+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --black:   #f5f0e8;
+  --white:   #1c1a17;
+  --cream:   #eae4d8;
+  --gold:    #8a6500;
+  --gold-lt: #5c4200;
+  --ink:     #ffffff;
+  --muted:   #7a7265;
+  --border:  rgba(120,95,20,0.2);
+  --green:   #2a8a55;
+  --serif:   'Spectral', Georgia, serif;
+  --sans:    'Nunito Sans', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--black);
+  color: var(--white);
+  font-family: var(--sans);
+  font-weight: 300;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* noise */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 999; opacity: .01;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+/* ── NAV ── */
+nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 48px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(245,240,232,.97);
+  backdrop-filter: blur(12px);
+  position: sticky; top: 0; z-index: 100;
+}
+.nav-logo {
+  font-family: var(--serif); font-size: 22px; font-weight: 600;
+  color: var(--gold); text-decoration: none; letter-spacing: .04em;
+}
+.nav-logo span { color: var(--white); font-weight: 300; }
+.nav-back {
+  font-size: 13px; color: rgba(28,26,23,.5); text-decoration: none;
+  display: flex; align-items: center; gap: 8px; transition: color .2s;
+  letter-spacing: .06em;
+}
+.nav-back:hover { color: var(--gold); }
+
+/* ── HERO ── */
+.page-hero {
+  text-align: center;
+  padding: 72px 24px 56px;
+  position: relative;
+}
+.page-hero::after {
+  content: '';
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 700px; height: 300px;
+  background: radial-gradient(ellipse at top, rgba(201,168,76,.09) 0%, transparent 70%);
+  pointer-events: none;
+}
+.page-eyebrow {
+  font-size: 11px; font-weight: 600; letter-spacing: .22em;
+  text-transform: uppercase; color: var(--gold); margin-bottom: 20px;
+}
+.page-hero h1 {
+  font-family: var(--serif);
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 300; line-height: 1.1; margin-bottom: 16px;
+}
+.page-hero h1 em { font-style: italic; color: var(--gold); }
+.page-hero p {
+  font-size: 16px; color: rgba(28,26,23,.55);
+  max-width: 480px; margin: 0 auto; line-height: 1.7;
+}
+
+
+
+
+
+
+
+
+/* ── PLANS GRID ── */
+.plans {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 24px;
+  align-items: stretch;
+}
+
+.plan-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  padding: 52px 44px 44px;
+  position: relative;
+  transition: transform .25s, border-color .25s;
+  cursor: pointer;
+}
+.plan-card:hover { transform: translateY(-3px); }
+.plan-card.selected {
+  border-color: rgba(201,168,76,.55);
+  background: rgba(138,101,0,.06);
+}
+.plan-card.featured { border-color: rgba(138,101,0,.3); }
+
+.plan-badge {
+  position: absolute; top: -1px; right: 28px;
+  background: var(--gold); color: var(--black);
+  font-size: 10px; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; padding: 6px 14px;
+}
+.plan-select-ring {
+  position: absolute; top: 20px; left: 20px;
+  width: 20px; height: 20px;
+  border: 2px solid var(--border); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .2s;
+}
+.plan-card.selected .plan-select-ring {
+  border-color: var(--gold); background: var(--gold);
+}
+.plan-select-ring::after {
+  content: '';
+  width: 8px; height: 8px;
+  background: var(--black); border-radius: 50%;
+  opacity: 0; transition: opacity .15s;
+}
+.plan-card.selected .plan-select-ring::after { opacity: 1; }
+
+.plan-tier {
+  font-size: 11px; font-weight: 600; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 20px;
+}
+.plan-price {
+  font-family: var(--serif);
+  font-size: 68px; font-weight: 300; line-height: 1;
+  color: var(--white); margin-bottom: 4px;
+}
+.plan-price sup {
+  font-size: 28px; font-weight: 400;
+  vertical-align: top; margin-top: 12px; display: inline-block;
+}
+.plan-price .cents { font-size: 38px; }
+.plan-period { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+
+.plan-divider { height: 1px; background: var(--border); margin-bottom: 28px; }
+
+.plan-features { list-style: none; display: flex; flex-direction: column; gap: 12px; margin-bottom: 36px; }
+.plan-features li {
+  font-size: 14px; color: rgba(28,26,23,.65);
+  display: flex; gap: 12px; align-items: flex-start; line-height: 1.5;
+}
+.plan-features li::before {
+  content: '✓'; color: var(--gold); font-weight: 700;
+  flex-shrink: 0; margin-top: 1px;
+}
+.plan-features li.pro-extra {
+  color: rgba(28,26,23,.85);
+  font-weight: 500;
+  border-left: 2px solid var(--gold);
+  padding-left: 8px;
+}
+.plan-features li.dim { color: rgba(28,26,23,.25); }
+.plan-features li.dim::before { content: '—'; color: rgba(107,101,96,.5); }
+
+/* ── CTA BUTTON ── */
+.btn-checkout {
+  display: block; width: 100%; text-align: center;
+  padding: 15px; border-radius: 4px;
+  font-family: var(--sans); font-size: 13px; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase;
+  text-decoration: none; border: none; cursor: pointer;
+  transition: all .2s;
+}
+.btn-checkout-ghost {
+  border: 1px solid var(--border); background: transparent;
+  color: rgba(28,26,23,.65);
+}
+.btn-checkout-ghost:hover { border-color: var(--gold); color: var(--gold); }
+.btn-checkout-gold { background: var(--gold); color: var(--black); }
+.btn-checkout-gold:hover {
+  background: var(--gold-lt);
+  box-shadow: 0 8px 28px rgba(201,168,76,.3);
+}
+
+/* ── STICKY BOTTOM SUMMARY ── */
+.checkout-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(245,240,232,.98);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+  padding: 16px 48px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 24px; flex-wrap: wrap;
+  transform: translateY(100%);
+  transition: transform .35s ease;
+  z-index: 50;
+}
+.checkout-bar.visible { transform: translateY(0); }
+.checkout-bar-info { display: flex; flex-direction: column; gap: 3px; }
+.checkout-bar-plan { font-size: 12px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.checkout-bar-price {
+  font-family: var(--serif); font-size: 26px; font-weight: 300; color: var(--white);
+}
+.checkout-bar-price em { font-style: normal; color: var(--gold); }
+.btn-checkout-main {
+  background: var(--gold); color: var(--black);
+  padding: 14px 48px; border-radius: 4px; border: none; cursor: pointer;
+  font-family: var(--sans); font-size: 13px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+  transition: background .2s, transform .15s, box-shadow .2s;
+  white-space: nowrap;
+}
+.btn-checkout-main:hover {
+  background: var(--gold-lt);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(201,168,76,.35);
+}
+.checkout-bar-trust {
+  display: flex; flex-direction: column; gap: 4px; align-items: flex-end;
+}
+.checkout-bar-trust span {
+  font-size: 11px; color: var(--muted); display: flex;
+  align-items: center; gap: 5px;
+}
+
+/* ── TRUST STRIP ── */
+.trust-strip {
+  display: flex; justify-content: center; gap: 40px;
+  flex-wrap: wrap;
+  margin: 56px 24px 0;
+  padding: 28px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.trust-item {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: rgba(28,26,23,.45);
+}
+.trust-item span { font-size: 18px; opacity: .6; }
+
+/* ── COMPARISON TABLE ── */
+.compare-wrap {
+  max-width: 900px; margin: 72px auto 0; padding: 0 24px;
+}
+.compare-title {
+  font-family: var(--serif); font-size: 28px; font-weight: 300;
+  text-align: center; margin-bottom: 40px;
+}
+.compare-title em { font-style: italic; color: var(--gold); }
+table {
+  width: 100%; border-collapse: collapse;
+}
+thead th {
+  padding: 16px 24px; font-size: 11px; font-weight: 600;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+  border-bottom: 1px solid var(--border); text-align: left;
+}
+thead th:not(:first-child) { text-align: center; }
+thead th.col-featured { color: var(--gold); }
+tbody tr { border-bottom: 1px solid rgba(201,168,76,.08); transition: background .15s; }
+tbody tr:hover { background: #ffffff; }
+tbody td {
+  padding: 14px 24px; font-size: 14px; color: rgba(28,26,23,.6);
+}
+tbody td:not(:first-child) { text-align: center; }
+.check { color: var(--gold); font-size: 16px; font-weight: 700; }
+.cross { color: rgba(107,101,96,.5); font-size: 16px; }
+.td-highlight { color: var(--gold-lt); font-weight: 500; }
+
+/* ── FAQ MINI ── */
+.faq-mini {
+  max-width: 680px; margin: 72px auto 0; padding: 0 24px 100px;
+}
+.faq-mini h2 {
+  font-family: var(--serif); font-size: 28px; font-weight: 300;
+  text-align: center; margin-bottom: 36px;
+}
+.faq-mini h2 em { font-style: italic; color: var(--gold); }
+.faq-row {
+  border-bottom: 1px solid var(--border); padding: 20px 0;
+}
+.faq-row h4 { font-size: 15px; font-weight: 400; margin-bottom: 8px; color: var(--white); }
+.faq-row p { font-size: 14px; color: rgba(28,26,23,.5); line-height: 1.7; }
+
+/* ── STRIPE NOTE ── */
+.stripe-note {
+  text-align: center; margin-top: 24px;
+  font-size: 12px; color: rgba(107,101,96,.6);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 700px) {
+  nav { padding: 16px 20px; }
+  .plans { grid-template-columns: 1fr; }
+  .checkout-bar { padding: 14px 20px; }
+  .trust-strip { gap: 20px; }
+  thead th, tbody td { padding: 12px 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="index.html">Nexus<span>Papers</span></a>
+  <a class="nav-back" href="index.html">← Back to home</a>
+</nav>
+
+<!-- HERO -->
+<div class="page-hero">
+  <div class="page-eyebrow">Subscribe</div>
+  <h1>Choose your <em>plan</em></h1>
+  <p>Start with a 14-day free trial. No credit card required. Cancel anytime.</p>
+</div>
+
+
+
+<!-- PLAN CARDS -->
+<div class="plans">
+
+  <!-- Essential -->
+  <div class="plan-card" id="card-essential" onclick="selectPlan('essential')" style="display:flex;flex-direction:column;">
+    <div class="plan-select-ring"></div>
+    <div class="plan-tier">Essential</div>
+    <div class="plan-price"><sup>$</sup>9<span class="cents">.97</span></div>
+    <div class="plan-period">per month, billed monthly</div>
+    <div class="plan-divider"></div>
+    <ul class="plan-features" style="flex:1;">
+      <li>1 field + 1 subfield</li>
+      <li>Up to 10 keywords of interest</li>
+      <li>Keyword blacklist</li>
+      <li>Weekly delivery — every Friday</li>
+      <li>HTML e-mail format</li>
+      <li>Direct DOI article links</li>
+      <li class="dim">Up to 3 subfields</li>
+      <li class="dim">Up to 30 keywords</li>
+      <li class="dim">PDF attachment</li>
+      <li class="dim">Priority support</li>
+    </ul>
+    <button class="btn-checkout btn-checkout-ghost" onclick="goToCheckout('essential', event)" style="margin-top:auto;">Get Essential</button>
+  </div>
+
+  <!-- Professional -->
+  <div class="plan-card featured" id="card-professional" onclick="selectPlan('professional')" style="display:flex;flex-direction:column;">
+    <div class="plan-select-ring"></div>
+    <div class="plan-tier">Professional</div>
+    <div class="plan-price"><sup>$</sup>14<span class="cents">.97</span></div>
+    <div class="plan-period">per month, billed monthly</div>
+    <div class="plan-divider"></div>
+    <ul class="plan-features" style="flex:1;">
+      <li>1 field + 1 subfield</li>
+      <li>Up to 10 keywords of interest</li>
+      <li>Keyword blacklist</li>
+      <li>Weekly delivery — every Friday</li>
+      <li>HTML e-mail format</li>
+      <li>Direct DOI article links</li>
+      <li class="pro-extra">Up to <strong>3 subfields</strong></li>
+      <li class="pro-extra">Up to <strong>30 keywords</strong></li>
+      <li class="pro-extra"><strong>PDF attachment</strong></li>
+      <li class="pro-extra">Priority support</li>
+    </ul>
+    <button class="btn-checkout btn-checkout-gold" onclick="goToCheckout('professional', event)" style="margin-top:auto;">Get Professional</button>
+  </div>
+
+</div>
+
+<p class="stripe-note">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+  Payments secured by Stripe. We never store your card details.
+</p>
+
+<!-- TRUST STRIP -->
+<div class="trust-strip">
+  <div class="trust-item"><span>🔒</span> SSL encrypted</div>
+  <div class="trust-item"><span>💳</span> Powered by Stripe</div>
+  <div class="trust-item"><span>📅</span> Cancel anytime</div>
+  <div class="trust-item"><span>🎁</span> 14-day free trial</div>
+  <div class="trust-item"><span>📧</span> No spam, ever</div>
+</div>
+
+<!-- COMPARISON TABLE -->
+<div class="compare-wrap">
+  <h2 class="compare-title">Plan <em>comparison</em></h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>Essential<br><span style="color:var(--gold);font-family:var(--serif);font-size:16px;font-weight:300">$9.97</span></th>
+        <th class="col-featured">Professional<br><span style="font-family:var(--serif);font-size:16px;font-weight:300">$14.97</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Scientific domains</td>
+        <td>All 4</td>
+        <td class="td-highlight">All 4</td>
+      </tr>
+      <tr>
+        <td>Subfields per subscription</td>
+        <td>1</td>
+        <td class="td-highlight">Up to 3</td>
+      </tr>
+      <tr>
+        <td>Keywords of interest</td>
+        <td>Up to 10</td>
+        <td class="td-highlight">Up to 30</td>
+      </tr>
+      <tr>
+        <td>Keyword blacklist</td>
+        <td><span class="check">✓</span></td>
+        <td><span class="check">✓</span></td>
+      </tr>
+      <tr>
+        <td>Weekly delivery (Monday)</td>
+        <td><span class="check">✓</span></td>
+        <td><span class="check">✓</span></td>
+      </tr>
+      <tr>
+        <td>HTML e-mail format</td>
+        <td><span class="check">✓</span></td>
+        <td><span class="check">✓</span></td>
+      </tr>
+      <tr>
+        <td>Direct DOI links</td>
+        <td><span class="check">✓</span></td>
+        <td><span class="check">✓</span></td>
+      </tr>
+      <tr>
+        <td>PDF attachment</td>
+        <td><span class="cross">—</span></td>
+        <td><span class="check">✓</span></td>
+      </tr>
+      <tr>
+        <td>Update preferences anytime</td>
+        <td><span class="check">✓</span></td>
+        <td><span class="check">✓</span></td>
+      </tr>
+      <tr>
+        <td>Priority support</td>
+        <td><span class="cross">—</span></td>
+        <td><span class="check">✓</span></td>
+      </tr>
+      <tr>
+        <td>14-day free trial</td>
+        <td><span class="check">✓</span></td>
+        <td><span class="check">✓</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- FAQ MINI -->
+<div class="faq-mini">
+  <h2>Before you <em>subscribe</em></h2>
+
+  <div class="faq-row">
+    <h4>Do I need a credit card to start the free trial?</h4>
+    <p>Yes — Stripe requires a card to initiate the trial, but you won't be charged until day 15. You can cancel anytime before that with no cost.</p>
+  </div>
+  <div class="faq-row">
+    <h4>Can I switch plans later?</h4>
+    <p>Yes. You can upgrade or downgrade at any time from your Stripe customer portal. Changes take effect on your next billing cycle.</p>
+  </div>
+  <div class="faq-row">
+    <h4>What happens after I subscribe?</h4>
+    <p>You'll be redirected to fill in your subscriber profile — your field, subfields, and keywords. Your first digest will arrive on the next Monday after your profile is complete.</p>
+  </div>
+  <div class="faq-row">
+    <h4>How do I cancel?</h4>
+    <p>E-mail <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="741a110c0107041504110607341319151d185a171b19">[email&#160;protected]</a> or click the unsubscribe link at the bottom of any weekly send. No questions asked.</p>
+  </div>
+  <div class="faq-row">
+    <h4>Is my payment information secure?</h4>
+    <p>All payments are processed by Stripe, one of the most trusted payment processors in the world. We never see or store your card details.</p>
+  </div>
+</div>
+
+<!-- STICKY CHECKOUT BAR -->
+<div class="checkout-bar" id="checkout-bar">
+  <div class="checkout-bar-info">
+    <div class="checkout-bar-plan" id="bar-plan">Professional plan selected</div>
+    <div class="checkout-bar-price" id="bar-price"><em>$14.97</em> / month</div>
+  </div>
+  <button class="btn-checkout-main" id="bar-btn" onclick="goToCheckout(selectedPlan, event)">
+    Continue to checkout →
+  </button>
+  <div class="checkout-bar-trust">
+    <span>🔒 Secured by Stripe</span>
+    <span>📅 Cancel anytime</span>
+  </div>
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+// ── State ─────────────────────────────────────────────────
+let selectedPlan = null;
+
+const prices = {
+  essential:    { display: '9<span class="cents">.97</span>', raw: '$9.97'  },
+  professional: { display: '14<span class="cents">.97</span>', raw: '$14.97' }
+};
+
+// ── REPLACE THESE with your real Stripe Checkout URLs ─────
+// Create them at: dashboard.stripe.com → Products → Payment Links
+//const stripeLinks = {
+//  essential:    'https://buy.stripe.com/YOUR_ESSENTIAL_MONTHLY_LINK',
+//  professional: 'https://buy.stripe.com/YOUR_PROFESSIONAL_MONTHLY_LINK'
+//};
+
+const stripeLinks = {
+  // SUBSTITUA OS LINKS ABAIXO PELOS QUE VOCÊ GERAR NO DASHBOARD DO STRIPE
+  essential:    'https://buy.stripe.com/SEU_LINK_ESSENTIAL_AQUI',
+  professional: 'https://buy.stripe.com/SEU_LINK_PROFESSIONAL_AQUI'
+};
+
+
+
+// ── Plan selection ─────────────────────────────────────────
+function selectPlan(plan) {
+  selectedPlan = plan;
+  document.getElementById('card-essential').classList.toggle('selected', plan === 'essential');
+  document.getElementById('card-professional').classList.toggle('selected', plan === 'professional');
+  document.getElementById('checkout-bar').classList.add('visible');
+  updateBar();
+}
+
+function updateBar() {
+  const p = prices[selectedPlan];
+  const tierName = selectedPlan === 'essential' ? 'Essential' : 'Professional';
+  document.getElementById('bar-plan').textContent = tierName + ' plan · monthly billing';
+  document.getElementById('bar-price').innerHTML = '<em>' + p.raw + '</em> / month';
+}
+
+// ── Checkout redirect ──────────────────────────────────────
+
+<script>
+function goToCheckout(plan, e) {
+  if (e) e.stopPropagation();
+  if (!plan) { alert('Please select a plan first.'); return; }
+
+  // Em vez de ir pro Stripe agora, vamos para o registro salvar os dados do cientista
+  // Passamos o plano via URL para o registro saber as limitações (Essential vs Pro)
+  window.location.href = `registration.html?plan=${plan}`;
+}
+</script>
+
+
+
+//function goToCheckout(plan, e) {
+//  if (e) e.stopPropagation();
+//  if (!plan) { alert('Please select a plan first.'); return; }
+//
+//  const url = stripeLinks[plan];
+//
+//  // If the Stripe links aren't set yet, show a message
+//  if (url.includes('YOUR_')) {
+//    alert('Stripe payment links not configured yet.\n\nTo set up:\n1. Go to dashboard.stripe.com\n2. Create a product 
