@@ -501,6 +501,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
 
 </div><!-- /container -->
 
+<script src="runtime-config.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════
 // PLAN DETECTION
@@ -1318,8 +1319,11 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
 
   // ── POST to Google Apps Script ──────────────────────────────
   // Send the form to your Cloudflare Worker (which then forwards to Apps Script securely).
-  // You can override at runtime with: window.__NP_FORM_API_URL__ = 'https://...workers.dev';
-  const FORM_API_URL = window.__NP_FORM_API_URL__ || 'https://REPLACE_WITH_YOUR_WORKER.workers.dev';
+  // Preferred: set this in runtime-config.js.
+  const FORM_API_URL =
+    (window.NEXUS_RUNTIME && window.NEXUS_RUNTIME.FORM_API_URL) ||
+    window.__NP_FORM_API_URL__ ||
+    'https://REPLACE_WITH_YOUR_WORKER.workers.dev';
 
   // Show loading state
   const submitBtn = document.getElementById('submit-btn');
