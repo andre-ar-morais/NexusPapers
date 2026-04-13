@@ -394,10 +394,19 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
     <!-- Subfield limit label (hidden, updated by JS) -->
     <span class="lim" id="subfield-limit-label" style="display:none"></span>
 
-    <!-- Topic multi (global, across all fields) -->
+    <!-- Topic input + suggestions (global, across all fields) -->
     <div class="form-grid" style="margin-top:20px;">
       <div class="field full">
-        <label>Topic <span style="font-weight:300;text-transform:none;letter-spacing:0;font-size:11px">(optional — refines your filter further)</span></label>
+        <label>Preferred Topics <span style="font-weight:300;text-transform:none;letter-spacing:0;font-size:11px">(optional — your own terms)</span></label>
+        <div class="tag-wrap" id="topic-pref-wrap" onclick="document.getElementById('topic-pref-input').focus()">
+          <input class="tag-input" id="topic-pref-input" placeholder="Type a topic and press Enter or comma…" maxlength="80">
+        </div>
+        <div class="tag-counter" id="topic-pref-counter">0 topics</div>
+        <span class="hint">You can type your own preferences, even if they are not listed in suggestions.</span>
+      </div>
+
+      <div class="field full">
+        <label>Topic Suggestions <span style="font-weight:300;text-transform:none;letter-spacing:0;font-size:11px">(optional — from selected field/subfield)</span></label>
         <div class="multi-panel disabled" id="topic-panel">
           <input class="multi-search" id="topic-search" placeholder="Search topics…" oninput="filterMulti('topic')" disabled>
           <div class="multi-list" id="topic-list">
@@ -622,7 +631,7 @@ function renderFieldSlots() {
     header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;';
     const slotTitle = document.createElement('span');
     slotTitle.style.cssText = 'font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);';
-    slotTitle.textContent = LIM.fields === 1 ? 'Field' : `Field ${idx + 1} of ${LIM.fields}`;
+    slotTitle.textContent = LIM.fields === 1 ? 'Selection' : `Selection ${idx + 1} of ${LIM.fields}`;
     header.appendChild(slotTitle);
 
     if (state.fieldSlots.length > 1) {
@@ -1174,7 +1183,7 @@ const origToggleSel = toggleSel;
 // ═══════════════════════════════════════════════════════
 // TAG INPUTS (keywords / blacklist)
 // ═══════════════════════════════════════════════════════
-function makeTagSystem(inputId, wrapperId, counterId, maxTags, isBlacklist) {
+function makeTagSystem(inputId, wrapperId, counterId, maxTags, isBlacklist, unitLabel = 'keywords') {
   const input   = document.getElementById(inputId);
   const wrap    = document.getElementById(wrapperId);
   const counter = document.getElementById(counterId);
@@ -1189,7 +1198,7 @@ function makeTagSystem(inputId, wrapperId, counterId, maxTags, isBlacklist) {
       wrap.insertBefore(el, input);
     });
     if (maxTags) {
-      counter.textContent = `${tags.length} / ${maxTags} keywords`;
+      counter.textContent = `${tags.length} / ${maxTags} ${unitLabel}`;
       counter.className   = 'tag-counter' + (tags.length >= maxTags ? ' at-limit' : '');
     } else {
       counter.textContent = `${tags.length} excluded`;
@@ -1212,8 +1221,9 @@ function makeTagSystem(inputId, wrapperId, counterId, maxTags, isBlacklist) {
   return { getTags: () => [...tags] };
 }
 
-const kwSystem = makeTagSystem('kw-input', 'kw-wrap', 'kw-counter', LIM.keywords, false);
+const kwSystem = makeTagSystem('kw-input', 'kw-wrap', 'kw-counter', LIM.keywords, false, 'keywords');
 const blSystem = makeTagSystem('bl-input', 'bl-wrap', 'bl-counter', null, true);
+const topicPrefSystem = makeTagSystem('topic-pref-input', 'topic-pref-wrap', 'topic-pref-counter', 30, false, 'topics');
 
 // ═══════════════════════════════════════════════════════
 // MODE TOGGLE
@@ -1290,7 +1300,11 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
       field:     sanitize(s.field),
       subfields: sanitizeTags(s.subfields, LIM.subfields, 200)
     })),
-    topics:       sanitizeTags(state.topics, 50, 200),
+    topics:       sanitizeTags(
+      Array.from(new Set([...state.topics, ...topicPrefSystem.getTags()])),
+      80,
+      200
+    ),
     granularity:  'subfield',
     journal_whitelist: sanitizeTags(state.journalWL, 100, 300),
     journal_blacklist: sanitizeTags(state.journalBL, 100, 300),
