@@ -408,20 +408,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
         <div class="badges-wrap" id="topic-badges"></div>
       </div>
 
-      <!-- Delivery scope -->
-      <div class="field full">
-        <label>Delivery Scope <span class="req">*</span></label>
-        <!--<select id="granularity" required onchange="onGranularityChange()">-->
-		<select id="granularity" name="granularity" required onchange="onGranularityChange()">
-          <option value="">Choose breadth of articles sent…</option>
-          <option value="topic">Topic only — most specific</option>
-          <option value="subfield">Subfield — narrow & focused</option>
-          <option value="field">Entire field — broader coverage</option>
-          <option value="domain">Entire domain — maximum breadth</option>
-          <option value="keywords_only">Keywords only — cross-domain</option>
-        </select>
-        <div id="gran-info" style="margin-top:8px;padding:12px 14px;background:rgba(138,101,0,.05);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--muted);line-height:1.6;display:none"></div>
-      </div>
+      <!-- Delivery scope removed to reduce decision friction -->
     </div>
 
     <!-- ══ 3. JOURNALS ══ -->
@@ -1184,23 +1171,6 @@ function filterJournals() {
 const origToggleSel = toggleSel;
 
 // ═══════════════════════════════════════════════════════
-// GRANULARITY INFO
-// ═══════════════════════════════════════════════════════
-const GRAN = {
-  topic:         '<strong>Topic only:</strong> Articles from your specific selected topics — the most precise filter available.',
-  subfield:      '<strong>Subfield:</strong> All articles from your chosen subfield(s), refined by your keywords.',
-  field:         '<strong>Field:</strong> All subfields within your chosen field, filtered by keywords.',
-  domain:        '<strong>Domain:</strong> All articles across the entire domain, filtered by keywords.',
-  keywords_only: '<strong>Keywords only:</strong> No area restriction — matches any article across all domains. Best for interdisciplinary researchers.'
-};
-function onGranularityChange() {
-  const v  = document.getElementById('granularity').value;
-  const el = document.getElementById('gran-info');
-  if (v && GRAN[v]) { el.innerHTML = GRAN[v]; el.style.display = 'block'; }
-  else el.style.display = 'none';
-}
-
-// ═══════════════════════════════════════════════════════
 // TAG INPUTS (keywords / blacklist)
 // ═══════════════════════════════════════════════════════
 function makeTagSystem(inputId, wrapperId, counterId, maxTags, isBlacklist) {
@@ -1296,8 +1266,8 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
   const kws = kwSystem.getTags();
   if (kws.length === 0) { alert('Please add at least one keyword of interest.'); return; }
   const hasSubfields = state.fieldSlots.some(s => s.subfields.length > 0);
-  if (!hasSubfields && document.getElementById('granularity').value !== 'keywords_only') {
-    alert('Please select at least one subfield, or choose "Keywords only" as delivery scope.'); return;
+  if (!hasSubfields) {
+    alert('Please select at least one subfield.'); return;
   }
 
   const rawEmail = document.getElementById('email').value.trim();
@@ -1320,7 +1290,7 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
       subfields: sanitizeTags(s.subfields, LIM.subfields, 200)
     })),
     topics:       sanitizeTags(state.topics, 50, 200),
-    granularity:  sanitize(document.getElementById('granularity').value),
+    granularity:  'subfield',
     journal_whitelist: sanitizeTags(state.journalWL, 100, 300),
     journal_blacklist: sanitizeTags(state.journalBL, 100, 300),
     keywords:     sanitizeTags(kws, LIM.keywords, 60),
@@ -1330,7 +1300,7 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
     submitted_at: new Date().toISOString()
   };
 
-  const required = ['name','email','country','education','domain','granularity'];
+  const required = ['name','email','country','education','domain'];
   for (const k of required) {
     if (!record[k]) { alert(`Please fill in: ${k.replace(/_/g,' ')}`); return; }
   }
@@ -1358,6 +1328,10 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
   submitBtn.disabled = true;
 
   try {
+    if (!FORM_API_URL || FORM_API_URL.includes('REPLACE_WITH_YOUR_WORKER')) {
+      throw new Error('Form API URL is not configured yet. Set your Cloudflare Worker URL in FORM_API_URL.');
+    }
+
     const payload = JSON.stringify(record);
 
     const response = await fetch(FORM_API_URL, {
@@ -1375,7 +1349,10 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
   } catch (err) {
     submitBtn.textContent = originalText;
     submitBtn.disabled = false;
-    alert('Error: ' + err.message);
+    const hint = String(err.message || '').includes('Failed to fetch')
+      ? '\n\nPossible causes: Worker URL missing/wrong, CORS origin not allowed, or Worker not deployed.'
+      : '';
+    alert('Error: ' + err.message + hint);
     return;
   }
 
