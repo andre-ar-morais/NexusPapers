@@ -887,19 +887,19 @@ footer {
   </div>
   <div class="hero-stats">
     <div class="stat">
-      <div class="stat-num">4M+</div>
-      <div class="stat-label">Articles indexed weekly</div>
+      <div class="stat-num" id="stat-articles">4M+</div>
+      <div class="stat-label" id="stat-articles-label">Weekly indexed publications</div>
     </div>
     <div class="stat">
-      <div class="stat-num">26</div>
+      <div class="stat-num" id="stat-fields">--</div>
       <div class="stat-label">Scientific fields</div>
     </div>
     <div class="stat">
-      <div class="stat-num">244</div>
+      <div class="stat-num" id="stat-subfields">--</div>
       <div class="stat-label">Subfields covered</div>
     </div>
     <div class="stat">
-      <div class="stat-num">48h</div>
+      <div class="stat-num" id="stat-latency">48h</div>
       <div class="stat-label">Latency from publication</div>
     </div>
   </div>
@@ -1429,6 +1429,68 @@ window.addEventListener('scroll', () => {
   document.querySelector('nav').style.padding =
     window.scrollY > 60 ? '12px 48px' : '20px 48px';
 });
+
+// -- Homepage metrics config
+const METRICS_CONFIG = {
+  // Keep static values now; flip `useWeeklyFile` later.
+  staticArticlesText: '4M+',
+  staticLatencyHours: 48,
+  useWeeklyFile: false,
+  weeklyCandidates: ['weekly_summary.json', 'weekly_stats.json', 'current_weekly.json']
+};
+
+// -- Dynamic homepage metrics from data files
+async function loadHomepageMetrics() {
+  document.getElementById('stat-articles').textContent = METRICS_CONFIG.staticArticlesText;
+  document.getElementById('stat-latency').textContent = `${METRICS_CONFIG.staticLatencyHours}h`;
+
+  try {
+    const hierarchyRes = await fetch('hierarchy.json');
+    if (!hierarchyRes.ok) throw new Error('Hierarchy unavailable');
+    const hierarchy = await hierarchyRes.json();
+
+    let fields = 0;
+    let subfields = 0;
+    Object.keys(hierarchy).forEach((domain) => {
+      const domainFields = Object.keys(hierarchy[domain] || {});
+      fields += domainFields.length;
+      domainFields.forEach((field) => {
+        subfields += Object.keys(hierarchy[domain][field] || {}).length;
+      });
+    });
+
+    document.getElementById('stat-fields').textContent = String(fields);
+    document.getElementById('stat-subfields').textContent = String(subfields);
+  } catch (err) {
+    console.warn('Could not load hierarchy metrics:', err);
+  }
+
+  // Optional weekly extraction file. Create one of these in this folder:
+  // `weekly_summary.json`, `weekly_stats.json`, or `current_weekly.json`
+  // Example:
+  // {"articles_indexed_weekly": 4123456, "latency_hours": 48}
+  if (!METRICS_CONFIG.useWeeklyFile) return;
+
+  for (const file of METRICS_CONFIG.weeklyCandidates) {
+    try {
+      const res = await fetch(file, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const weekly = await res.json();
+      if (typeof weekly.articles_indexed_weekly === 'number') {
+        document.getElementById('stat-articles').textContent =
+          `${Math.round(weekly.articles_indexed_weekly / 1000000)}M+`;
+      }
+      if (typeof weekly.latency_hours === 'number') {
+        document.getElementById('stat-latency').textContent = `${weekly.latency_hours}h`;
+      }
+      break;
+    } catch (_) {
+      // Try next candidate file
+    }
+  }
+}
+
+loadHomepageMetrics();
 </script>
 </body>
 </html>

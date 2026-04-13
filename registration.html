@@ -245,7 +245,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
 </style>
   <!-- ═══ SECURITY ═══ -->
   <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none';">  <meta http-equiv="X-Content-Type-Options" content="nosniff"> -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self' https://script.google.com; img-src 'self' data:; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.workers.dev https://*.pages.dev; img-src 'self' data:; frame-ancestors 'none';">
   <meta http-equiv="X-Frame-Options" content="DENY">
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
@@ -288,8 +288,6 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
     <strong>Updating your preferences?</strong> Enter your registered e-mail below. All fields reflect your current settings — change what you need and resubmit. Your previous selections will be replaced.
   </div>
 
-  <form id="reg-form" novalidate>
-  <!--<form id="reg-form" name="subscriber-profile" method="POST" data-netlify="true"> -->
   <form id="reg-form" name="subscriber-profile" method="POST" novalidate>
   <input type="hidden" name="form-name" value="subscriber-profile" />
 
@@ -1349,9 +1347,9 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
   console.log('SUBSCRIBER RECORD:', JSON.stringify(record, null, 2));
 
   // ── POST to Google Apps Script ──────────────────────────────
-  // Replace these two values after deploying your Apps Script:
-  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyTrjAcujgzLCSmJaWPJjUbPobFaKePSBPwnjKCIvrabNUN9Ezzj01L6vvWaTh1IN_s/exec';
-  const SECRET_TOKEN    = 'ChronoMagus#dm99'; // must match apps_script.js
+  // Send the form to your Cloudflare Worker (which then forwards to Apps Script securely).
+  // You can override at runtime with: window.__NP_FORM_API_URL__ = 'https://...workers.dev';
+  const FORM_API_URL = window.__NP_FORM_API_URL__ || 'https://REPLACE_WITH_YOUR_WORKER.workers.dev';
 
   // Show loading state
   const submitBtn = document.getElementById('submit-btn');
@@ -1360,9 +1358,9 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
   submitBtn.disabled = true;
 
   try {
-    const payload = JSON.stringify({ ...record, token: SECRET_TOKEN });
+    const payload = JSON.stringify(record);
 
-    const response = await fetch(APPS_SCRIPT_URL, {
+    const response = await fetch(FORM_API_URL, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    payload,
