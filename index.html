@@ -837,16 +837,83 @@ footer {
 .reveal-delay-4 { transition-delay: .4s; }
 
 /* ═══════════════════════════════════════
+   HAMBURGER + MOBILE MENU
+═══════════════════════════════════════ */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  z-index: 101;
+}
+.nav-hamburger span {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: var(--white);
+  border-radius: 2px;
+  transition: transform .25s, opacity .25s;
+  transform-origin: center;
+}
+.nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-hamburger.open span:nth-child(2) { opacity: 0; }
+.nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+.mobile-menu {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(232,224,210,.99);
+  backdrop-filter: blur(16px);
+  z-index: 99;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 80px 32px 48px;
+}
+.mobile-menu.open { display: flex; }
+.mobile-menu a {
+  font-family: var(--serif);
+  font-size: 28px;
+  font-weight: 300;
+  color: var(--white);
+  text-decoration: none;
+  padding: 10px 0;
+  letter-spacing: .02em;
+  transition: color .2s;
+}
+.mobile-menu a:hover { color: var(--gold); }
+.mobile-menu-cta {
+  margin-top: 24px;
+  background: var(--gold) !important;
+  color: var(--black) !important;
+  font-family: var(--sans) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  letter-spacing: .1em !important;
+  text-transform: uppercase;
+  padding: 14px 36px !important;
+  border-radius: 3px;
+}
+
+/* ═══════════════════════════════════════
    RESPONSIVE
 ═══════════════════════════════════════ */
 @media (max-width: 860px) {
-  nav { padding: 16px 24px; }
+  nav { padding: 16px 20px; }
   .nav-links { display: none; }
+  .nav-hamburger { display: flex; }
   .features-layout { grid-template-columns: 1fr; }
   .features-visual { display: none; }
   .pricing-grid { grid-template-columns: 1fr; }
   .faq-layout { grid-template-columns: 1fr; }
   .footer-inner { grid-template-columns: 1fr; gap: 36px; }
+  .steps { grid-template-columns: 1fr !important; }
 }
 @media (max-width: 600px) {
   section { padding: 80px 20px; }
@@ -868,7 +935,20 @@ footer {
     <a href="#faq">FAQ</a>
     <a href="registration.html" class="nav-cta">Get started</a>
   </div>
+  <button class="nav-hamburger" id="nav-hamburger" aria-label="Open menu" onclick="toggleMobileMenu()">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
+
+<!-- ═══ MOBILE MENU ═══ -->
+<div class="mobile-menu" id="mobile-menu">
+  <a href="#how"          onclick="closeMobileMenu()">How it works</a>
+  <a href="#features"     onclick="closeMobileMenu()">Features</a>
+  <a href="#pricing"      onclick="closeMobileMenu()">Pricing</a>
+  <a href="#getstarted"   onclick="closeMobileMenu()">How to subscribe</a>
+  <a href="#faq"          onclick="closeMobileMenu()">FAQ</a>
+  <a href="registration.html" class="mobile-menu-cta">Get started →</a>
+</div>
 
 <!-- ═══ HERO ═══ -->
 <section class="hero" id="hero">
@@ -945,7 +1025,7 @@ footer {
         New papers, new discoveries, new knowledge curated specifically for you.
       </p>
     </div>
-    <div class="steps" style="grid-template-columns: repeat(3, 1fr);">
+    <div class="steps">
       <div class="step reveal reveal-delay-1">
         <div class="step-num">01</div>
         <div class="step-icon">🗂️</div>
@@ -1303,7 +1383,6 @@ footer {
           <li class="pro-extra">Up to <strong>3 subfields</strong></li>
           <li class="pro-extra">Up to <strong>30 keywords</strong></li>
           <li class="pro-extra"><strong>PDF attachment</strong></li>
-          <li class="pro-extra">Priority support</li>
         </ul>
         <a href="registration.html?plan=professional" class="btn-pricing btn-pricing-gold" style="margin-top:auto;">Get Professional</a>
       </div>
@@ -1426,9 +1505,26 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
 // -- Nav scroll shrink
 window.addEventListener('scroll', () => {
+  const isMobile = window.innerWidth <= 860;
   document.querySelector('nav').style.padding =
-    window.scrollY > 60 ? '12px 48px' : '20px 48px';
+    window.scrollY > 60
+      ? (isMobile ? '12px 20px' : '12px 48px')
+      : (isMobile ? '16px 20px' : '20px 48px');
 });
+
+// -- Mobile menu
+function toggleMobileMenu() {
+  const menu = document.getElementById('mobile-menu');
+  const btn  = document.getElementById('nav-hamburger');
+  const open = menu.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  document.body.style.overflow = open ? 'hidden' : '';
+}
+function closeMobileMenu() {
+  document.getElementById('mobile-menu').classList.remove('open');
+  document.getElementById('nav-hamburger').classList.remove('open');
+  document.body.style.overflow = '';
+}
 
 // -- Homepage metrics config
 const METRICS_CONFIG = {
