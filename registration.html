@@ -532,8 +532,8 @@ const rawPlan = (params.get('plan') || 'essential').toLowerCase();
 const PLAN    = rawPlan === 'professional' ? 'professional' : 'essential';
 
 const LIMITS = {
-  essential:    { fields: 1, subfields: 5, keywords: 10, pdf: false },
-  professional: { fields: 3, subfields: 10, keywords: 30, pdf: true  }
+  essential:    { fields: 1, subfields: 2, keywords: 10, kw_blacklist: 10, journal_lists: false, pdf: false },
+  professional: { fields: 3, subfields: 5, keywords: 30, kw_blacklist: -1, journal_lists: true,  pdf: true  }
 };
 const LIM = LIMITS[PLAN];
 
@@ -544,15 +544,17 @@ document.getElementById('plan-pill').classList.add(PLAN);
 document.getElementById('plan-pill-text').textContent =
   PLAN === 'professional' ? 'Professional Plan' : 'Essential Plan';
 document.getElementById('plan-limits').innerHTML = `
-  <span>Fields: <strong>${LIM.fields}</strong></span>
+  <span>Domains: <strong>${LIM.fields}</strong></span>
   <span>Subfields: <strong>${LIM.subfields}</strong></span>
   <span>Keywords: <strong>${LIM.keywords}</strong></span>
+  <span>Blacklist: <strong>${LIM.kw_blacklist === -1 ? 'Unlimited' : LIM.kw_blacklist + ' terms'}</strong></span>
+  <span>Journals: <strong>${LIM.journal_lists ? 'WL &amp; BL' : 'Not included'}</strong></span>
   <span>PDF: <strong>${LIM.pdf ? 'Included' : 'Not included'}</strong></span>`;
 
 document.getElementById('subfield-limit-label').textContent =
-  `— up to ${LIM.subfields} per field on your plan`;
+  `— up to ${LIM.subfields} subfields on your plan`;
 document.getElementById('kw-limit-label').textContent =
-  `— up to ${LIM.keywords} (${LIM.keywords === 30 ? '10 per subfield' : '10 per subfield'} on your plan)`;
+  `— up to ${LIM.keywords} on your plan`;
 
 // PDF options handled server-side based on plan
 
@@ -1234,8 +1236,22 @@ function makeTagSystem(inputId, wrapperId, counterId, maxTags, isBlacklist, unit
 }
 
 const kwSystem = makeTagSystem('kw-input', 'kw-wrap', 'kw-counter', LIM.keywords, false, 'keywords');
-const blSystem = makeTagSystem('bl-input', 'bl-wrap', 'bl-counter', null, true);
+const blSystem = makeTagSystem('bl-input', 'bl-wrap', 'bl-counter', LIM.kw_blacklist === -1 ? null : LIM.kw_blacklist, true);
 const topicPrefSystem = makeTagSystem('topic-pref-input', 'topic-pref-wrap', 'topic-pref-counter', 30, false, 'topics');
+
+// Lock journal whitelist/blacklist for Essential plan
+if (!LIM.journal_lists) {
+  const journalSection = document.getElementById('journal-section');
+  const journalPlaceholder = document.getElementById('journal-placeholder');
+  if (journalPlaceholder) {
+    journalPlaceholder.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:20px;opacity:.4">🔒</span>
+        <span>Journal whitelist &amp; blacklist are available on the <strong style="color:var(--gold)">Professional plan</strong>.
+        <a href="registration.html?plan=professional" style="color:var(--gold);text-decoration:none;margin-left:4px;">Upgrade →</a></span>
+      </div>`;
+  }
+}
 
 // ═══════════════════════════════════════════════════════
 // MODE TOGGLE
@@ -1321,7 +1337,7 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
     journal_whitelist: sanitizeTags(state.journalWL, 100, 300),
     journal_blacklist: sanitizeTags(state.journalBL, 100, 300),
     keywords:     sanitizeTags(kws, LIM.keywords, 60),
-    kw_blacklist: sanitizeTags(blSystem.getTags(), 50, 60),
+    kw_blacklist: sanitizeTags(blSystem.getTags(), LIM.kw_blacklist === -1 ? 200 : LIM.kw_blacklist, 60),
     format:       'email',
     frequency:    'weekly_friday',
     submitted_at: new Date().toISOString()
