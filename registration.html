@@ -479,11 +479,12 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
     </div>
 
     <!-- ══ 4. KEYWORDS ══ -->
-    <div class="section-label">
+    <div class="section-label" id="global-kw-section-label">
       <div class="section-num">4</div>
       <div class="section-title">Keyword Filters</div>
       <div class="section-line"></div>
     </div>
+    <div id="global-kw-section">
     <div class="form-grid">
       <div class="field full">
         <label>
@@ -504,6 +505,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
         <div class="tag-counter" id="bl-counter">0 excluded</div>
         <span class="hint">Articles whose titles contain these words will never appear, regardless of other settings.</span>
       </div>
+    </div>
     </div>
 
     
@@ -553,9 +555,13 @@ document.getElementById('plan-limits').innerHTML = `
 document.getElementById('subfield-limit-label').textContent =
   `— up to 3 per field (${LIM.subfields} total on your plan)`;
 document.getElementById('kw-limit-label').textContent =
-  PLAN === 'professional'
-    ? `— up to ${LIM.keywords} total (15 per domain)`
-    : `— up to ${LIM.keywords} on your plan`;
+  `— up to ${LIM.keywords} on your plan`;
+
+// For Professional: keywords live inside each domain slot — hide the global keyword section
+if (PLAN === 'professional') {
+  document.getElementById('global-kw-section').style.display = 'none';
+  document.getElementById('global-kw-section-label').style.display = 'none';
+}
 
 // PDF options handled server-side based on plan
 
@@ -618,7 +624,7 @@ function addFieldSlot() {
   if (state.fieldSlots.length >= LIM.fields) return;
 
   const slotIndex = state.fieldSlots.length;
-  const slot = { field: '', subfields: [] };
+  const slot = { field: '', subfields: [], keywords: [] };
   state.fieldSlots.push(slot);
   renderFieldSlots();
 }
@@ -733,6 +739,75 @@ function renderFieldSlots() {
     subfieldWrap.appendChild(subfieldCount);
     subfieldWrap.appendChild(subfieldBadges);
     box.appendChild(subfieldWrap);
+
+    // Per-slot keywords (Professional only)
+    if (PLAN === 'professional') {
+      const KW_SLOT_MAX = 15;
+      if (!slot.keywords) slot.keywords = [];
+
+      const kwField = document.createElement('div');
+      kwField.className = 'field';
+      kwField.style.marginTop = '16px';
+
+      const kwLabel = document.createElement('label');
+      kwLabel.style.cssText = 'font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;';
+      kwLabel.innerHTML = `Keywords for this domain <span style="color:var(--gold);font-size:10px;font-weight:400;letter-spacing:.04em;text-transform:none">— up to ${KW_SLOT_MAX}</span>`;
+
+      const kwTagWrap = document.createElement('div');
+      kwTagWrap.className = 'tag-wrap';
+
+      const kwInput = document.createElement('input');
+      kwInput.className = 'tag-input';
+      kwInput.placeholder = 'Type a keyword and press Enter or comma…';
+      kwInput.maxLength = 60;
+      kwTagWrap.onclick = () => kwInput.focus();
+
+      const kwCounter = document.createElement('div');
+      kwCounter.className = 'tag-counter';
+
+      function renderSlotKw() {
+        kwTagWrap.querySelectorAll('.kw-tag').forEach(t => t.remove());
+        slot.keywords.forEach((tag, i) => {
+          const el = document.createElement('span');
+          el.className = 'kw-tag';
+          el.innerHTML = `${tag} <button type="button" class="tag-remove" data-i="${i}">×</button>`;
+          kwTagWrap.insertBefore(el, kwInput);
+        });
+        kwCounter.textContent = `${slot.keywords.length} / ${KW_SLOT_MAX} keywords`;
+        kwCounter.className = 'tag-counter' + (slot.keywords.length >= KW_SLOT_MAX ? ' at-limit' : '');
+      }
+
+      function addSlotKw(val) {
+        val = val.trim().toLowerCase().replace(/,/g, '');
+        if (!val || slot.keywords.includes(val) || slot.keywords.length >= KW_SLOT_MAX) return;
+        slot.keywords.push(val);
+        renderSlotKw();
+      }
+
+      kwTagWrap.addEventListener('click', e => {
+        const btn = e.target.closest('.tag-remove');
+        if (!btn) return;
+        slot.keywords.splice(+btn.dataset.i, 1);
+        renderSlotKw();
+      });
+
+      kwInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addSlotKw(kwInput.value); kwInput.value = ''; }
+        else if (e.key === 'Backspace' && !kwInput.value && slot.keywords.length) { slot.keywords.pop(); renderSlotKw(); }
+      });
+
+      kwInput.addEventListener('blur', () => {
+        if (kwInput.value.trim()) { addSlotKw(kwInput.value); kwInput.value = ''; }
+      });
+
+      kwTagWrap.appendChild(kwInput);
+      renderSlotKw();
+
+      kwField.appendChild(kwLabel);
+      kwField.appendChild(kwTagWrap);
+      kwField.appendChild(kwCounter);
+      box.appendChild(kwField);
+    }
 
     slot.slotEl = box;
     slot._subfieldPanel = subfieldPanel;
@@ -1237,7 +1312,7 @@ function makeTagSystem(inputId, wrapperId, counterId, maxTags, isBlacklist, unit
 }
 
 const kwSystem = makeTagSystem('kw-input', 'kw-wrap', 'kw-counter', LIM.keywords, false, 'keywords');
-const blSystem = makeTagSystem('bl-input', 'bl-wrap', 'bl-counter', LIM.kw_blacklist, true);
+const blSystem = makeTagSystem('bl-input', 'bl-wrap', 'bl-counter', null, true);
 const topicPrefSystem = makeTagSystem('topic-pref-input', 'topic-pref-wrap', 'topic-pref-counter', 30, false, 'topics');
 
 // ═══════════════════════════════════════════════════════
@@ -1290,7 +1365,13 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
   e.preventDefault();
 
   const kws = kwSystem.getTags();
-  if (kws.length === 0) { alert('Please add at least one keyword of interest.'); return; }
+  if (PLAN === 'essential' && kws.length === 0) {
+    alert('Please add at least one keyword of interest.'); return;
+  }
+  if (PLAN === 'professional') {
+    const hasKeywords = state.fieldSlots.some(s => s.keywords && s.keywords.length > 0);
+    if (!hasKeywords) { alert('Please add at least one keyword in one of your domain selections.'); return; }
+  }
   const hasSubfields = state.fieldSlots.some(s => s.subfields.length > 0);
   if (!hasSubfields) {
     alert('Please select at least one subfield.'); return;
@@ -1311,10 +1392,16 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
     occupation:   sanitize(document.getElementById('occupation').value),
     institution:  sanitize(document.getElementById('institution').value),
     domain:       sanitize(document.getElementById('domain').value),
-    fields:       state.fieldSlots.map(s => ({
-      field:     sanitize(s.field),
-      subfields: sanitizeTags(s.subfields, LIM.subfields, 200)
-    })),
+    fields: PLAN === 'professional'
+      ? state.fieldSlots.map(s => ({
+          field:     sanitize(s.field),
+          subfields: sanitizeTags(s.subfields, 3, 200),
+          keywords:  sanitizeTags(s.keywords || [], 15, 60)
+        }))
+      : state.fieldSlots.map(s => ({
+          field:     sanitize(s.field),
+          subfields: sanitizeTags(s.subfields, LIM.subfields, 200)
+        })),
     topics:       sanitizeTags(
       Array.from(new Set([...state.topics, ...topicPrefSystem.getTags()])),
       80,
@@ -1323,7 +1410,7 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
     granularity:  'subfield',
     journal_whitelist: sanitizeTags(state.journalWL, 100, 300),
     journal_blacklist: sanitizeTags(state.journalBL, 100, 300),
-    keywords:     sanitizeTags(kws, LIM.keywords, 60),
+    keywords:     PLAN === 'essential' ? sanitizeTags(kws, LIM.keywords, 60) : [],
     kw_blacklist: sanitizeTags(blSystem.getTags(), LIM.kw_blacklist ?? 500, 60),
     format:       'email',
     frequency:    'weekly_friday',
