@@ -388,7 +388,8 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
       <div class="section-line"></div>
     </div>
 
-    <!-- Domain selector (single, always) -->
+    <!-- Domain selector (global, essential only) -->
+    <div id="global-domain-block">
     <div class="form-grid" style="margin-bottom:8px;">
       <div class="field full">
         <label>Domain <span class="req">*</span></label>
@@ -398,6 +399,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
         </select>
         <span class="hint">The broad scientific area you work in.</span>
       </div>
+    </div>
     </div>
 
     <!-- Field slots — rendered dynamically by JS -->
@@ -534,8 +536,8 @@ const rawPlan = (params.get('plan') || 'essential').toLowerCase();
 const PLAN    = rawPlan === 'professional' ? 'professional' : 'essential';
 
 const LIMITS = {
-  essential:    { fields: 1, subfields: 3,  keywords: 10, kw_blacklist: 10,   pdf: false },
-  professional: { fields: 3, subfields: 9,  keywords: 45, kw_blacklist: null, pdf: true  }
+  essential:    { domains: 1, fields: 1, subfields: 3,  keywords: 10, kw_blacklist: 10,   pdf: false },
+  professional: { domains: 3, fields: 1, subfields: 3,  keywords: 15, kw_blacklist: null, pdf: true  }
 };
 const LIM = LIMITS[PLAN];
 
@@ -545,20 +547,27 @@ banner.classList.add(PLAN);
 document.getElementById('plan-pill').classList.add(PLAN);
 document.getElementById('plan-pill-text').textContent =
   PLAN === 'professional' ? 'Professional Plan' : 'Essential Plan';
-document.getElementById('plan-limits').innerHTML = `
-  <span>Domains: <strong>${LIM.fields}</strong></span>
+document.getElementById('plan-limits').innerHTML = PLAN === 'professional' ? `
+  <span>Domains: <strong>${LIM.domains}</strong></span>
+  <span>Fields/domain: <strong>${LIM.fields}</strong></span>
+  <span>Subfields/domain: <strong>${LIM.subfields}</strong></span>
+  <span>Keywords/domain: <strong>${LIM.keywords}</strong></span>
+  <span>Blacklist: <strong>Unlimited</strong></span>
+  <span>PDF: <strong>Included</strong></span>` : `
+  <span>Domains: <strong>${LIM.domains}</strong></span>
   <span>Subfields: <strong>${LIM.subfields}</strong></span>
   <span>Keywords: <strong>${LIM.keywords}</strong></span>
-  <span>Blacklist: <strong>${LIM.kw_blacklist === null ? 'Unlimited' : LIM.kw_blacklist}</strong></span>
-  <span>PDF: <strong>${LIM.pdf ? 'Included' : 'Not included'}</strong></span>`;
+  <span>Blacklist: <strong>${LIM.kw_blacklist}</strong></span>
+  <span>PDF: <strong>Not included</strong></span>`;
 
 document.getElementById('subfield-limit-label').textContent =
-  `— up to 3 per field (${LIM.subfields} total on your plan)`;
+  `— up to ${LIM.subfields} per field (${LIM.subfields * (PLAN === 'professional' ? LIM.domains : 1)} total on your plan)`;
 document.getElementById('kw-limit-label').textContent =
   `— up to ${LIM.keywords} on your plan`;
 
-// For Professional: keywords live inside each domain slot — hide the global keyword section
+// For Professional: domain selector moves into each slot — hide the global domain block
 if (PLAN === 'professional') {
+  document.getElementById('global-domain-block').style.display = 'none';
   document.getElementById('global-kw-section').style.display = 'none';
   document.getElementById('global-kw-section-label').style.display = 'none';
 }
@@ -584,12 +593,18 @@ async function loadHierarchy() {
 }
 
 function populateDomains() {
+  // Essential: populate the global domain selector
   const sel = document.getElementById('domain');
   Object.keys(H).sort().forEach(d => {
     const o = document.createElement('option');
     o.value = o.textContent = d;
     sel.appendChild(o);
   });
+
+  // Professional: auto-add the first domain slot on load
+  if (PLAN === 'professional') {
+    addDomainSlot();
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -605,10 +620,13 @@ const state = {
 // ═══════════════════════════════════════════════════════
 // MULTI-FIELD SLOT SYSTEM
 // ═══════════════════════════════════════════════════════
-// state.fieldSlots = [{field, subfields:[], slotEl}]
+// Essential: state.fieldSlots = [{field, subfields:[], slotEl}]
+// Professional: state.domainSlots = [{domain, field, subfields:[], keywords:[], slotEl}]
 state.fieldSlots = [];
+state.domainSlots = [];
 
 function onDomainChange() {
+  if (PLAN === 'professional') return; // professional uses per-slot domains
   const domain = document.getElementById('domain').value;
   state.fieldSlots = [];
   state.topics.length = 0;
@@ -618,7 +636,229 @@ function onDomainChange() {
   if (domain) addFieldSlot();
 }
 
+// ── Professional: domain slots ──────────────────────────
+function addDomainSlot() {
+  if (state.domainSlots.length >= LIM.domains) return;
+  state.domainSlots.push({ domain: '', field: '', subfields: [], keywords: [] });
+  renderDomainSlots();
+}
+
+function removeDomainSlot(index) {
+  state.domainSlots.splice(index, 1);
+  state.topics.length = 0;
+  renderDomainSlots();
+  rebuildTopics();
+  rebuildJournals();
+}
+
+function renderDomainSlots() {
+  const wrap = document.getElementById('field-slots-wrap');
+  wrap.innerHTML = '';
+
+  state.domainSlots.forEach((slot, idx) => {
+    const box = document.createElement('div');
+    box.className = 'field-slot-box';
+    box.style.cssText = 'border:1px solid var(--border);border-radius:6px;padding:20px 24px;margin-bottom:12px;background:#ffffff;';
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;';
+    const slotTitle = document.createElement('span');
+    slotTitle.style.cssText = 'font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);';
+    slotTitle.textContent = `Domain Selection ${idx + 1} of ${LIM.domains}`;
+    header.appendChild(slotTitle);
+    if (state.domainSlots.length > 1) {
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button'; removeBtn.textContent = '✕ Remove';
+      removeBtn.style.cssText = 'border:none;background:none;font-size:12px;color:var(--muted);cursor:pointer;font-family:var(--sans);';
+      removeBtn.onmouseover = () => removeBtn.style.color = 'var(--accent)';
+      removeBtn.onmouseout  = () => removeBtn.style.color = 'var(--muted)';
+      removeBtn.onclick = () => removeDomainSlot(idx);
+      header.appendChild(removeBtn);
+    }
+    box.appendChild(header);
+
+    // Domain selector
+    const domainWrap = document.createElement('div');
+    domainWrap.className = 'field';
+    domainWrap.style.marginBottom = '16px';
+    const domainLabel = document.createElement('label');
+    domainLabel.textContent = 'Domain';
+    domainLabel.style.cssText = 'font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;';
+    const domainSel = document.createElement('select');
+    domainSel.style.cssText = 'width:100%;background:#ffffff;border:1px solid var(--border);border-radius:5px;padding:10px 14px;font-family:var(--sans);font-size:14px;color:rgba(28,26,23,.9);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'8\' viewBox=\'0 0 12 8\'%3E%3Cpath d=\'M1 1l5 5 5-5\' stroke=\'%236b6560\' stroke-width=\'1.5\' fill=\'none\' stroke-linecap=\'round\'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;';
+    domainSel.innerHTML = '<option value="">Select domain…</option>';
+    Object.keys(H).sort().forEach(d => {
+      const o = document.createElement('option');
+      o.value = o.textContent = d;
+      if (d === slot.domain) o.selected = true;
+      domainSel.appendChild(o);
+    });
+    domainSel.onchange = () => {
+      slot.domain = domainSel.value;
+      slot.field = '';
+      slot.subfields = [];
+      renderDomainSlots();
+      rebuildTopics();
+      rebuildJournals();
+    };
+    const domainHint = document.createElement('span');
+    domainHint.className = 'hint';
+    domainHint.textContent = 'The broad scientific area for this selection.';
+    domainWrap.appendChild(domainLabel);
+    domainWrap.appendChild(domainSel);
+    domainWrap.appendChild(domainHint);
+    box.appendChild(domainWrap);
+
+    // Field selector
+    const fieldWrap = document.createElement('div');
+    fieldWrap.className = 'field';
+    fieldWrap.style.marginBottom = '16px';
+    const fieldLabel = document.createElement('label');
+    fieldLabel.textContent = 'Field';
+    fieldLabel.style.cssText = 'font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;';
+    const fieldSel = document.createElement('select');
+    fieldSel.style.cssText = domainSel.style.cssText;
+    fieldSel.innerHTML = '<option value="">Select field…</option>';
+    fieldSel.disabled = !slot.domain;
+    if (slot.domain && H[slot.domain]) {
+      Object.keys(H[slot.domain]).sort().forEach(f => {
+        const o = document.createElement('option');
+        o.value = o.textContent = f;
+        if (f === slot.field) o.selected = true;
+        fieldSel.appendChild(o);
+      });
+    }
+    fieldSel.onchange = () => {
+      slot.field = fieldSel.value;
+      slot.subfields = [];
+      renderSlotSubfields(slot, subfieldWrap, subfieldPanel, subfieldList, subfieldCount, subfieldBadges, idx);
+      rebuildTopics();
+      rebuildJournals();
+    };
+    fieldWrap.appendChild(fieldLabel);
+    fieldWrap.appendChild(fieldSel);
+    box.appendChild(fieldWrap);
+
+    // Subfields
+    const subfieldWrap = document.createElement('div');
+    subfieldWrap.className = 'field';
+    const subfieldLabel = document.createElement('label');
+    subfieldLabel.style.cssText = 'font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;';
+    subfieldLabel.textContent = `Subfields — up to ${LIM.subfields}`;
+    const subfieldPanel = document.createElement('div');
+    subfieldPanel.className = 'multi-panel' + (slot.field ? '' : ' disabled');
+    const sfSearch = document.createElement('input');
+    sfSearch.className = 'multi-search';
+    sfSearch.placeholder = 'Search subfields…';
+    sfSearch.disabled = !slot.field;
+    const subfieldList = document.createElement('div');
+    subfieldList.className = 'multi-list';
+    const sfEmpty = document.createElement('div');
+    sfEmpty.className = 'multi-empty';
+    sfEmpty.textContent = 'Select a field first.';
+    sfEmpty.style.display = 'none';
+    subfieldList.appendChild(sfEmpty);
+    subfieldPanel.appendChild(sfSearch);
+    subfieldPanel.appendChild(subfieldList);
+    const subfieldCount = document.createElement('div');
+    subfieldCount.className = 'multi-count';
+    subfieldCount.textContent = '0 selected';
+    const subfieldBadges = document.createElement('div');
+    subfieldBadges.className = 'badges-wrap';
+    sfSearch.oninput = () => {
+      const q = sfSearch.value.toLowerCase();
+      subfieldList.querySelectorAll('.multi-option').forEach(o => {
+        o.classList.toggle('hidden', !o.dataset.value.toLowerCase().includes(q));
+      });
+    };
+    subfieldWrap.appendChild(subfieldLabel);
+    subfieldWrap.appendChild(subfieldPanel);
+    subfieldWrap.appendChild(subfieldCount);
+    subfieldWrap.appendChild(subfieldBadges);
+    box.appendChild(subfieldWrap);
+
+    // Keywords (per domain slot)
+    const KW_SLOT_MAX = LIM.keywords;
+    if (!slot.keywords) slot.keywords = [];
+    const kwField = document.createElement('div');
+    kwField.className = 'field';
+    kwField.style.marginTop = '16px';
+    const kwLabel = document.createElement('label');
+    kwLabel.style.cssText = 'font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;';
+    kwLabel.innerHTML = `Keywords for this domain <span style="color:var(--gold);font-size:10px;font-weight:400;letter-spacing:.04em;text-transform:none">— up to ${KW_SLOT_MAX}</span>`;
+    const kwTagWrap = document.createElement('div');
+    kwTagWrap.className = 'tag-wrap';
+    const kwInput = document.createElement('input');
+    kwInput.className = 'tag-input';
+    kwInput.placeholder = 'Type a keyword and press Enter or comma…';
+    kwInput.maxLength = 60;
+    kwTagWrap.onclick = () => kwInput.focus();
+    const kwCounter = document.createElement('div');
+    kwCounter.className = 'tag-counter';
+
+    function renderSlotKw() {
+      kwTagWrap.querySelectorAll('.kw-tag').forEach(t => t.remove());
+      slot.keywords.forEach((tag, i) => {
+        const el = document.createElement('span');
+        el.className = 'kw-tag';
+        el.innerHTML = `${tag} <button type="button" class="tag-remove" data-i="${i}">×</button>`;
+        kwTagWrap.insertBefore(el, kwInput);
+      });
+      kwCounter.textContent = `${slot.keywords.length} / ${KW_SLOT_MAX} keywords`;
+      kwCounter.className = 'tag-counter' + (slot.keywords.length >= KW_SLOT_MAX ? ' at-limit' : '');
+    }
+    function addSlotKw(val) {
+      val = val.trim().toLowerCase().replace(/,/g, '');
+      if (!val || slot.keywords.includes(val) || slot.keywords.length >= KW_SLOT_MAX) return;
+      slot.keywords.push(val); renderSlotKw();
+    }
+    kwTagWrap.addEventListener('click', e => {
+      const btn = e.target.closest('.tag-remove');
+      if (!btn) return;
+      slot.keywords.splice(+btn.dataset.i, 1); renderSlotKw();
+    });
+    kwInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addSlotKw(kwInput.value); kwInput.value = ''; }
+      else if (e.key === 'Backspace' && !kwInput.value && slot.keywords.length) { slot.keywords.pop(); renderSlotKw(); }
+    });
+    kwInput.addEventListener('blur', () => { if (kwInput.value.trim()) { addSlotKw(kwInput.value); kwInput.value = ''; } });
+    kwTagWrap.appendChild(kwInput);
+    renderSlotKw();
+    kwField.appendChild(kwLabel);
+    kwField.appendChild(kwTagWrap);
+    kwField.appendChild(kwCounter);
+    box.appendChild(kwField);
+
+    slot.slotEl = box;
+    slot._subfieldPanel = subfieldPanel;
+    slot._subfieldList  = subfieldList;
+    slot._subfieldCount = subfieldCount;
+    slot._subfieldBadges = subfieldBadges;
+    slot._sfSearch      = sfSearch;
+
+    if (slot.field) {
+      renderSlotSubfields(slot, subfieldWrap, subfieldPanel, subfieldList, subfieldCount, subfieldBadges, idx);
+    }
+    wrap.appendChild(box);
+  });
+
+  // Add domain button
+  if (state.domainSlots.length < LIM.domains) {
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.style.cssText = 'width:100%;padding:12px;border:1px dashed var(--border);border-radius:6px;background:transparent;font-family:var(--sans);font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;margin-bottom:12px;';
+    addBtn.textContent = `+ Add another domain (${state.domainSlots.length} / ${LIM.domains})`;
+    addBtn.onmouseover = () => { addBtn.style.borderColor = 'var(--gold)'; addBtn.style.color = 'var(--gold)'; };
+    addBtn.onmouseout  = () => { addBtn.style.borderColor = 'var(--border)'; addBtn.style.color = 'var(--muted)'; };
+    addBtn.onclick = addDomainSlot;
+    wrap.appendChild(addBtn);
+  }
+}
+
+// ── Essential: field slots (single domain, multiple fields) ──
 function addFieldSlot() {
+  if (PLAN === 'professional') { addDomainSlot(); return; }
   const domain = document.getElementById('domain').value;
   if (!domain) return;
   if (state.fieldSlots.length >= LIM.fields) return;
@@ -630,6 +870,7 @@ function addFieldSlot() {
 }
 
 function removeFieldSlot(index) {
+  if (PLAN === 'professional') { removeDomainSlot(index); return; }
   state.fieldSlots.splice(index, 1);
   state.topics.length = 0;
   renderFieldSlots();
@@ -823,7 +1064,7 @@ function renderFieldSlots() {
     wrap.appendChild(box);
   });
 
-  // Add field button
+  // Add field button (essential only — professional uses renderDomainSlots)
   if (domain && state.fieldSlots.length < LIM.fields && LIM.fields > 1) {
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
@@ -837,7 +1078,8 @@ function renderFieldSlots() {
 }
 
 function renderSlotSubfields(slot, wrap, panel, list, countEl, badgesEl, slotIdx) {
-  const domain = document.getElementById('domain').value;
+  // For professional, domain comes from slot; for essential, from global selector
+  const domain = PLAN === 'professional' ? slot.domain : document.getElementById('domain').value;
   list.querySelectorAll('.multi-option').forEach(el => el.remove());
 
   if (!domain || !slot.field) {
@@ -874,14 +1116,16 @@ function renderSlotSubfields(slot, wrap, panel, list, countEl, badgesEl, slotIdx
         cb.style.borderColor = 'rgba(120,95,20,0.4)';
       }
       if (checked) {
-        // Count total subfields across all slots
-        const totalSF = state.fieldSlots.reduce((acc, s) => acc + s.subfields.length, 0);
-        if (totalSF >= LIM.subfields) {
+        // Professional: per-slot limit (3); Essential: global total limit
+        const atLimit = PLAN === 'professional'
+          ? slot.subfields.length >= LIM.subfields
+          : state.fieldSlots.reduce((acc, s) => acc + s.subfields.length, 0) >= LIM.subfields;
+        if (atLimit) {
           cb.checked = false;
           cb.style.background = '#fff';
           cb.style.borderColor = 'rgba(120,95,20,0.4)';
           div.classList.remove('selected');
-          countEl.textContent = `⚠ Max ${LIM.subfields} subfields total on your plan`;
+          countEl.textContent = `⚠ Max ${LIM.subfields} subfields per domain`;
           setTimeout(() => updateSlotCount(slot, countEl), 2500);
           return;
         }
@@ -908,9 +1152,15 @@ function renderSlotSubfields(slot, wrap, panel, list, countEl, badgesEl, slotIdx
 }
 
 function updateSlotCount(slot, countEl) {
-  const total = state.fieldSlots.reduce((acc, s) => acc + s.subfields.length, 0);
-  countEl.textContent = `${slot.subfields.length} selected (${total} / ${LIM.subfields} total)`;
-  countEl.className = 'multi-count' + (total >= LIM.subfields ? ' at-limit' : '');
+  if (PLAN === 'professional') {
+    // Each domain slot has its own 3-subfield limit
+    countEl.textContent = `${slot.subfields.length} / ${LIM.subfields} selected`;
+    countEl.className = 'multi-count' + (slot.subfields.length >= LIM.subfields ? ' at-limit' : '');
+  } else {
+    const total = state.fieldSlots.reduce((acc, s) => acc + s.subfields.length, 0);
+    countEl.textContent = `${slot.subfields.length} selected (${total} / ${LIM.subfields} total)`;
+    countEl.className = 'multi-count' + (total >= LIM.subfields ? ' at-limit' : '');
+  }
 }
 
 function renderSlotBadges(slot, badgesEl, list, slotIdx) {
@@ -926,7 +1176,8 @@ function renderSlotBadges(slot, badgesEl, list, slotIdx) {
     if (!btn) return;
     const si  = parseInt(btn.dataset.slot);
     const sf  = decodeURIComponent(btn.dataset.sf);
-    const s   = state.fieldSlots[si];
+    const slots = PLAN === 'professional' ? state.domainSlots : state.fieldSlots;
+    const s   = slots[si];
     if (!s) return;
     const i = s.subfields.indexOf(sf);
     if (i > -1) s.subfields.splice(i, 1);
@@ -951,6 +1202,15 @@ function renderSlotBadges(slot, badgesEl, list, slotIdx) {
 
 // Compatibility shims for journal/topic rebuilds
 function getAllSubfields() {
+  if (PLAN === 'professional') {
+    const result = [];
+    state.domainSlots.forEach(slot => {
+      if (slot.domain && slot.field) {
+        slot.subfields.forEach(sf => result.push({ domain: slot.domain, field: slot.field, sf }));
+      }
+    });
+    return result;
+  }
   const domain = document.getElementById('domain').value;
   const result = [];
   state.fieldSlots.forEach(slot => {
@@ -1369,10 +1629,12 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
     alert('Please add at least one keyword of interest.'); return;
   }
   if (PLAN === 'professional') {
-    const hasKeywords = state.fieldSlots.some(s => s.keywords && s.keywords.length > 0);
+    const hasKeywords = state.domainSlots.some(s => s.keywords && s.keywords.length > 0);
     if (!hasKeywords) { alert('Please add at least one keyword in one of your domain selections.'); return; }
   }
-  const hasSubfields = state.fieldSlots.some(s => s.subfields.length > 0);
+  const hasSubfields = PLAN === 'professional'
+    ? state.domainSlots.some(s => s.subfields.length > 0)
+    : state.fieldSlots.some(s => s.subfields.length > 0);
   if (!hasSubfields) {
     alert('Please select at least one subfield.'); return;
   }
@@ -1391,9 +1653,12 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
     education:    sanitize(document.getElementById('education').value),
     occupation:   sanitize(document.getElementById('occupation').value),
     institution:  sanitize(document.getElementById('institution').value),
-    domain:       sanitize(document.getElementById('domain').value),
+    domain:       PLAN === 'professional'
+      ? (state.domainSlots[0]?.domain || '')
+      : sanitize(document.getElementById('domain').value),
     fields: PLAN === 'professional'
-      ? state.fieldSlots.map(s => ({
+      ? state.domainSlots.map(s => ({
+          domain:    sanitize(s.domain),
           field:     sanitize(s.field),
           subfields: sanitizeTags(s.subfields, 3, 200),
           keywords:  sanitizeTags(s.keywords || [], 15, 60)
@@ -1417,9 +1682,15 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
     submitted_at: new Date().toISOString()
   };
 
-  const required = ['name','email','country','education','domain'];
+  const required = ['name','email','country','education'];
+  if (PLAN === 'essential') required.push('domain');
   for (const k of required) {
     if (!record[k]) { alert(`Please fill in: ${k.replace(/_/g,' ')}`); return; }
+  }
+  // For professional, validate that at least one domain slot is filled
+  if (PLAN === 'professional') {
+    const hasValidSlot = state.domainSlots.some(s => s.domain && s.field);
+    if (!hasValidSlot) { alert('Please select at least one domain and field.'); return; }
   }
 
   // Rate limit: prevent double submission
