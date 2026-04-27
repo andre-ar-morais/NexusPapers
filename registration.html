@@ -499,17 +499,6 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:18px 4
         <div class="tag-counter" id="kw-counter">0 keywords</div>
         <span class="hint">Articles whose titles contain any of these words will be prioritised. Press <strong>Enter</strong> or <strong>,</strong> to add each keyword.</span>
       </div>
-    </div>
-    </div>
-
-    <!-- Keyword Blacklist — shown for both plans -->
-    <div id="kw-blacklist-section">
-    <div class="section-label" id="pro-blacklist-label" style="display:none">
-      <div class="section-num">5</div>
-      <div class="section-title">Keyword Blacklist</div>
-      <div class="section-line"></div>
-    </div>
-    <div class="form-grid">
       <div class="field full">
         <label>Keyword Blacklist <span style="font-weight:300;text-transform:none;font-size:11px;letter-spacing:0">(optional)</span></label>
         <div class="tag-wrap" id="bl-wrap" onclick="document.getElementById('bl-input').focus()">
@@ -581,7 +570,6 @@ if (PLAN === 'professional') {
   document.getElementById('global-domain-block').style.display = 'none';
   document.getElementById('global-kw-section').style.display = 'none';
   document.getElementById('global-kw-section-label').style.display = 'none';
-  document.getElementById('pro-blacklist-label').style.display = 'flex';
 }
 
 // PDF options handled server-side based on plan
@@ -651,7 +639,7 @@ function onDomainChange() {
 // ── Professional: domain slots ──────────────────────────
 function addDomainSlot() {
   if (state.domainSlots.length >= LIM.domains) return;
-  state.domainSlots.push({ domain: '', field: '', subfields: [], keywords: [] });
+  state.domainSlots.push({ domain: '', field: '', subfields: [], keywords: [], kw_blacklist: [] });
   renderDomainSlots();
 }
 
@@ -842,6 +830,59 @@ function renderDomainSlots() {
     kwField.appendChild(kwCounter);
     box.appendChild(kwField);
 
+    // Keyword Blacklist (per domain slot)
+    if (!slot.kw_blacklist) slot.kw_blacklist = [];
+    const blField = document.createElement('div');
+    blField.className = 'field';
+    blField.style.marginTop = '12px';
+    const blLabel = document.createElement('label');
+    blLabel.style.cssText = 'font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;';
+    blLabel.innerHTML = `Keyword Blacklist for this domain <span style="color:var(--muted);font-size:10px;font-weight:400;letter-spacing:.04em;text-transform:none">— optional</span>`;
+    const blTagWrap = document.createElement('div');
+    blTagWrap.className = 'tag-wrap';
+    blTagWrap.style.cssText = 'background:#ffffff;border:1px solid rgba(192,57,43,0.25);border-radius:5px;padding:8px 10px;min-height:44px;cursor:text;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;';
+    blTagWrap.onfocus = () => blTagWrap.style.borderColor = 'rgba(192,57,43,0.5)';
+    const blInput = document.createElement('input');
+    blInput.className = 'tag-input';
+    blInput.placeholder = 'Type a word to exclude and press Enter or comma…';
+    blInput.maxLength = 60;
+    blTagWrap.onclick = () => blInput.focus();
+    const blCounter = document.createElement('div');
+    blCounter.className = 'tag-counter';
+
+    function renderSlotBl() {
+      blTagWrap.querySelectorAll('.kw-tag').forEach(t => t.remove());
+      slot.kw_blacklist.forEach((tag, i) => {
+        const el = document.createElement('span');
+        el.className = 'kw-tag blacklist';
+        el.innerHTML = `${tag} <button type="button" class="tag-remove" data-i="${i}">×</button>`;
+        blTagWrap.insertBefore(el, blInput);
+      });
+      blCounter.textContent = `${slot.kw_blacklist.length} excluded`;
+      blCounter.className = 'tag-counter' + (slot.kw_blacklist.length > 0 ? '' : '');
+    }
+    function addSlotBl(val) {
+      val = val.trim().toLowerCase().replace(/,/g, '');
+      if (!val || slot.kw_blacklist.includes(val)) return;
+      slot.kw_blacklist.push(val); renderSlotBl();
+    }
+    blTagWrap.addEventListener('click', e => {
+      const btn = e.target.closest('.tag-remove');
+      if (!btn) return;
+      slot.kw_blacklist.splice(+btn.dataset.i, 1); renderSlotBl();
+    });
+    blInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addSlotBl(blInput.value); blInput.value = ''; }
+      else if (e.key === 'Backspace' && !blInput.value && slot.kw_blacklist.length) { slot.kw_blacklist.pop(); renderSlotBl(); }
+    });
+    blInput.addEventListener('blur', () => { if (blInput.value.trim()) { addSlotBl(blInput.value); blInput.value = ''; } });
+    blTagWrap.appendChild(blInput);
+    renderSlotBl();
+    blField.appendChild(blLabel);
+    blField.appendChild(blTagWrap);
+    blField.appendChild(blCounter);
+    box.appendChild(blField);
+
     slot.slotEl = box;
     slot._subfieldPanel = subfieldPanel;
     slot._subfieldList  = subfieldList;
@@ -849,6 +890,7 @@ function renderDomainSlots() {
     slot._subfieldBadges = subfieldBadges;
     slot._sfSearch      = sfSearch;
     slot._kwInput       = kwInput;
+    slot._blInput       = blInput;
 
     if (slot.field) {
       renderSlotSubfields(slot, subfieldWrap, subfieldPanel, subfieldList, subfieldCount, subfieldBadges, idx);
@@ -1637,7 +1679,7 @@ function sanitizeTags(arr, maxItems, maxLen) {
 document.getElementById('reg-form').addEventListener('submit', async function(e) {
   e.preventDefault();
 
-  // Flush any keyword still typed (not yet confirmed with Enter) in all domain slots
+  // Flush any keyword/blacklist still typed (not yet confirmed with Enter) in all domain slots
   if (PLAN === 'professional') {
     state.domainSlots.forEach(s => {
       if (s._kwInput && s._kwInput.value.trim()) {
@@ -1646,6 +1688,13 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
           s.keywords.push(val);
         }
         s._kwInput.value = '';
+      }
+      if (s._blInput && s._blInput.value.trim()) {
+        const val = s._blInput.value.trim().toLowerCase().replace(/,/g, '');
+        if (val && !s.kw_blacklist.includes(val)) {
+          s.kw_blacklist.push(val);
+        }
+        s._blInput.value = '';
       }
     });
   }
@@ -1680,10 +1729,11 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
       : sanitize(document.getElementById('domain').value),
     fields: PLAN === 'professional'
       ? state.domainSlots.map(s => ({
-          domain:    sanitize(s.domain),
-          field:     sanitize(s.field),
-          subfields: sanitizeTags(s.subfields, 3, 200),
-          keywords:  sanitizeTags(s.keywords || [], 15, 60)
+          domain:       sanitize(s.domain),
+          field:        sanitize(s.field),
+          subfields:    sanitizeTags(s.subfields, 3, 200),
+          keywords:     sanitizeTags(s.keywords || [], 15, 60),
+          kw_blacklist: sanitizeTags(s.kw_blacklist || [], 500, 60)
         }))
       : state.fieldSlots.map(s => ({
           field:     sanitize(s.field),
@@ -1698,7 +1748,7 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
     journal_whitelist: sanitizeTags(state.journalWL, 100, 300),
     journal_blacklist: sanitizeTags(state.journalBL, 100, 300),
     keywords:     PLAN === 'essential' ? sanitizeTags(kws, LIM.keywords, 60) : [],
-    kw_blacklist: sanitizeTags(blSystem.getTags(), LIM.kw_blacklist ?? 500, 60),
+    kw_blacklist: PLAN === 'essential' ? sanitizeTags(blSystem.getTags(), LIM.kw_blacklist ?? 500, 60) : [],
     format:       'email',
     frequency:    'weekly_friday',
     submitted_at: new Date().toISOString()
