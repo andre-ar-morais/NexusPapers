@@ -1747,8 +1747,18 @@ document.getElementById('reg-form').addEventListener('submit', async function(e)
     granularity:  'subfield',
     journal_whitelist: sanitizeTags(state.journalWL, 100, 300),
     journal_blacklist: sanitizeTags(state.journalBL, 100, 300),
-    keywords:     PLAN === 'essential' ? sanitizeTags(kws, LIM.keywords, 60) : [],
-    kw_blacklist: PLAN === 'essential' ? sanitizeTags(blSystem.getTags(), LIM.kw_blacklist ?? 500, 60) : [],
+    keywords:     PLAN === 'essential'
+      ? sanitizeTags(kws, LIM.keywords, 60)
+      : sanitizeTags(
+          Array.from(new Set(state.domainSlots.flatMap(s => s.keywords || []))),
+          LIM.keywords * LIM.domains, 60
+        ),
+    kw_blacklist: PLAN === 'essential'
+      ? sanitizeTags(blSystem.getTags(), LIM.kw_blacklist ?? 500, 60)
+      : sanitizeTags(
+          Array.from(new Set(state.domainSlots.flatMap(s => s.kw_blacklist || []))),
+          500, 60
+        ),
     format:       'email',
     frequency:    'weekly_friday',
     submitted_at: new Date().toISOString()
